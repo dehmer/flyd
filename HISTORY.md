@@ -20,7 +20,7 @@ var a = flyd.stream();
 var b = flyd.stream();
 var sum = flyd.stream([a, b], function() {
   return a() + b();
-}
+})
 ```
 
 with

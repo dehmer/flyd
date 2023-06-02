@@ -4,34 +4,26 @@
   "description": "The less is more, modular, functional reactive programming library",
   "main": "lib/index.js",
   "unpkg": "flyd.min.js",
+  "scripts": {
+    "test:flyd": "mocha",
+    "test:modules": "mocha module/**/test/*.js",
+    "docs": "documentation -f md lib/index.js > API.md",
+    "perf": "./perf/run-benchmarks",
+    "coverage": "c8 -all --include 'lib/**/*' --reporter=html mocha"
+  },
   "directories": {
     "example": "examples",
     "test": "test"
   },
-  "dependencies": {
-    "whatwg-fetch": "^3.0.0"
-  },
   "devDependencies": {
+    "@babel/preset-env": "^7.22.4",
+    "@babel/register": "^7.21.0",
     "benchmark": "^1.0.0",
-    "bluebird": "^2.9.13",
-    "browserify": "^10.2.4",
-    "coveralls": "^2.11.2",
+    "c8": "^7.14.0",
     "eslint": "^2.7.0",
-    "istanbul": "^0.3.15",
-    "mocha": "^2.2.1",
-    "mocha-lcov-reporter": "0.0.2",
-    "np": "^2.19.0",
-    "ramda": "^0.27.1",
+    "mocha": "^10.2.0",
+    "ramda": "^0.29.0",
     "transducers.js": "0.3.x"
-  },
-  "scripts": {
-    "test-lib": "mocha",
-    "test": "eslint --fix lib/ test/ module/ && mocha test/*.js module/**/test/*.js",
-    "docs": "documentation -f md lib/index.js > API.md",
-    "perf": "./perf/run-benchmarks",
-    "coverage": "istanbul cover _mocha -- -R spec",
-    "post-to-coveralls-io": "istanbul cover _mocha --report lcovonly -- -R spec && cat ./coverage/lcov.info | coveralls && rm -rf ./coverage",
-    "release": "np"
   },
   "repository": {
     "type": "git",
