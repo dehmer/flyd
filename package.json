@@ -7,6 +7,7 @@
   "scripts": {
     "test:flyd": "mocha",
     "test:modules": "mocha module/**/test/*.js",
+    "test:signal": "mocha test/signal.test.js",
     "docs": "documentation -f md lib/index.js > API.md",
     "perf": "./perf/run-benchmarks",
     "coverage": "c8 -all --include 'lib/**/*' --reporter=html mocha"
