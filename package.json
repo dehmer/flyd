@@ -22,11 +22,6 @@
     "mocha-lcov-reporter": "0.0.2",
     "np": "^2.19.0",
     "ramda": "^0.27.1",
-    "rollup": "^0.56.2",
-    "rollup-plugin-commonjs": "^8.3.0",
-    "rollup-plugin-node-resolve": "^3.0.3",
-    "rollup-plugin-replace": "^2.0.0",
-    "rollup-plugin-uglify": "^3.0.0",
     "transducers.js": "0.3.x"
   },
   "scripts": {
@@ -36,7 +31,6 @@
     "perf": "./perf/run-benchmarks",
     "coverage": "istanbul cover _mocha -- -R spec",
     "post-to-coveralls-io": "istanbul cover _mocha --report lcovonly -- -R spec && cat ./coverage/lcov.info | coveralls && rm -rf ./coverage",
-    "build": "rollup -c rollup.config.dev.js && rollup -c rollup.config.js && node ./build-examples.js",
     "release": "np"
   },
   "repository": {
