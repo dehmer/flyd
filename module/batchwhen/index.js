@@ -1,6 +1,6 @@
 var flyd = require('../../lib');
 var dropRepeats = require('../droprepeats').dropRepeats;
-var contains = require('ramda/src/contains');
+var R = require('ramda');
 
 // Stream bool -> Stream a -> Stream a
 module.exports = flyd.curryN(2, function(sBool, sA) {
@@ -8,8 +8,8 @@ module.exports = flyd.curryN(2, function(sBool, sA) {
 
   var ns = flyd.combine(function(sBool, sA, self, changed) {
 
-    var sBoolChanged = contains(sBool, changed);
-    var sAChanged = contains(sA, changed);
+    var sBoolChanged = R.includes(sBool, changed);
+    var sAChanged = R.includes(sA, changed);
 
 
     if (sA() !== undefined) {
