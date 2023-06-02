@@ -33,6 +33,25 @@ describe('Signal', function () {
     assert.strictEqual(s(), expected)
   })
 
+  it.skip('of :: a -> Signal a [recursive, bound]', function () {
+    const result = []
+    const inner = () => link(x => result.push(x() + 1), [Signal.of(1)])
+    link(inner, [Signal.of(null)])
+    assert.deepStrictEqual(result, [2])
+  })
+
+  it.skip('of :: a -> Signal a [recursive, unbounded]', function () {
+    const result = []
+    const inner = () => {
+      const s = Signal.of()
+      link(x => result.push(x() + 1), [s])
+      s(1)
+      return s
+    }
+    link(inner, [Signal.of(null)])
+    assert.deepStrictEqual(result, [2])
+  })
+
   // Check preconditions on linked streams.
 
   ;[
