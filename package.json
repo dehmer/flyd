@@ -6,7 +6,7 @@
   "unpkg": "flyd.min.js",
   "scripts": {
     "test": "mocha test/**/*.js module/**/test/*.js",
-    "test:flyd": "mocha",
+    "test:flyd": "mocha test/index.js",
     "test:module": "mocha module/**/test/*.js",
     "test:signal": "mocha test/signal.test.js",
     "docs": "documentation -f md lib/index.js > API.md",
