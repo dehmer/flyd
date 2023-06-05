@@ -169,10 +169,27 @@ describe('Signal', function () {
     a(1); assert.strictEqual(d(), a() * 8)
   })
 
-  it('set :: Signal a -> a -> Unit [diamond]', function () {
+  it('set :: Signal a -> a -> Unit [diamond, unbounded]', function () {
     const a = Signal.of()
     const d = add(addN(2, a), addN(3, a))
+
+    let calls = 0
+    effect(() => (calls += 1), d)
     a(1); assert.strictEqual(d(), 7)
+
+    assert.strictEqual(calls, 1)
+  })
+
+  it.skip('set :: Signal a -> a -> Unit [diamond, bounded]', function () {
+    const a = Signal.of(0)
+    const d = add(addN(2, a), addN(3, a))
+
+    let calls = 0
+    effect(() => (calls += 1), d)
+    a(1); assert.strictEqual(d(), 7)
+
+    // FIXME: `d` should be called twice.
+    assert.strictEqual(calls, 3)
   })
 })
 
