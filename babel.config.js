@@ -11,7 +11,7 @@ module.exports = (api) => {
       // target environment(s). This both makes your life
       // easier and JavaScript bundles smaller!
       //
-      "@babel/preset-env",
+      '@babel/preset-env',
       {
         // useBuiltIns :: "usage" | "entry" | false (defaults)
         // This option configures how @babel/preset-env

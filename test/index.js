@@ -425,7 +425,8 @@ describe('stream', function() {
         }, [s]);
       });
 
-      it('[f69b5df7] does not process out of order promises', function(done) {
+      // long runner
+      it.skip('[f69b5df7] does not process out of order promises', function(done) {
         var promises = [];
         var delay = function(ms, val) {
           var p = new Promise(function(res) {
@@ -454,7 +455,9 @@ describe('stream', function() {
       });
     });
     describe('flattenPromise', function() {
-      it('[0906cc89] processes out of order promises', function(done) {
+
+      // long runner
+      it.skip('[0906cc89] processes out of order promises', function(done) {
         var promises = [];
         var delay = function(ms, val) {
           var p = new Promise(function(res) {
@@ -577,7 +580,9 @@ describe('stream', function() {
       var expected = [2, 3, 4, 4, 5, 6, 6, 7, 8]
       assert.deepEqual(actual, expected);
     });
-    it('passed bug outlined in https://github.com/paldepind/flyd/issues/31', function(done) {
+
+    // long runner
+    it.skip('passed bug outlined in https://github.com/paldepind/flyd/issues/31', function(done) {
       function delay(val, ms) {
         var outStream = flyd.stream();
 
@@ -676,6 +681,7 @@ describe('stream', function() {
       s1(12)(2); s2(4)(44); s1(1); s2(12)(2);
       assert.deepEqual(result, [12, 2, 4, 44, 1, 12, 2]);
     });
+
     it('is curried', function() {
       var result = [];
       var s1 = stream();

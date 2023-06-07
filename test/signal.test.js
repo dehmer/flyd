@@ -101,7 +101,7 @@ describe('Signal', function () {
     assert.strictEqual(c(), a() + b())
   })
 
-  it('link :: (* -> b) -> [Signal] -> Signal b [single path]', function () {
+  it('link :: (* -> b) -> [Signal] -> Signal b [sequential]', function () {
     const a = Signal.of(1)
     const b = double(a)
     const c = double(b)
