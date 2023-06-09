@@ -224,6 +224,12 @@ describe('Signal', function () {
 
     a(1); assert.deepStrictEqual(actual, [7, 9])
   })
+
+  it('set :: Signal a -> a -> Unit [update input]', function () {
+    const a = Signal.of(2)
+    const b = link(a => { a(3); return a() }, [a])
+    assert.strictEqual(b(), 3)
+  })
 })
 
 describe('Signal (higher-level API)', function () {
@@ -293,12 +299,12 @@ describe('Signal (flyd legacy test cases)', function () {
     s(3); assert.strictEqual(s(), 3)
   })
 
-  it.skip('[b6544c81] - unsupported')
-  it.skip('[a3b05330] - unsupported')
-  it.skip('[069dc867] - unsupported')
+  it.skip('[b6544c81] - unsupported (fluent-API)')
+  it.skip('[a3b05330] - unsupported (JSON)')
+  it.skip('[069dc867] - unsupported (`undefined` handling)')
   it.skip('[d7ab0d5e] - noop')
-  it.skip('[d6b98643] - unsupported')
-  it.skip('[c43f5584] - unsupported')
+  it.skip('[d6b98643] - unsupported (type check)')
+  it.skip('[c43f5584] - unsupported (toString())')
 
   it('[dcaeb6c1]', function () {
     const x = Signal.of(3)
@@ -357,8 +363,8 @@ describe('Signal (flyd legacy test cases)', function () {
     x(2); assert.strictEqual(c(), 15) // (2 + 3) * 2 + (2 + 3)
   })
 
-  it.skip('[12484e5d] - unsupported')
-  it.skip('[0031cdd6] - unsupported')
+  it.skip('[12484e5d] - unsupported (self)')
+  it.skip('[0031cdd6] - unsupported (changed)')
 
   it('[ee41cbdc]', function () {
     const x = Signal.of(4)
@@ -372,7 +378,7 @@ describe('Signal (flyd legacy test cases)', function () {
     assert.strictEqual(a(), 6)
   })
 
-  it.skip('[81b8e664] - stack overflow', function () {
+  it.skip('[81b8e664] - missed update', function () {
     const order = []
     const x = Signal.of(4)
     const y = Signal.of(3)
@@ -383,6 +389,7 @@ describe('Signal (flyd legacy test cases)', function () {
     }, [x])
 
     link(y => {
+      // Update should be deferred until after this function completed.
       y(3)
       order.push(1)
       return y()
