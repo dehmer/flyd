@@ -33,14 +33,14 @@ describe('Signal', function () {
     assert.strictEqual(s(), expected)
   })
 
-  it.skip('of :: a -> Signal a [recursive, bound]', function () {
+  it('of :: a -> Signal a [recursive, bound]', function () {
     const result = []
     const inner = () => link(x => result.push(x() + 1), [Signal.of(1)])
     link(inner, [Signal.of(null)])
     assert.deepStrictEqual(result, [2])
   })
 
-  it.skip('of :: a -> Signal a [recursive, unbounded]', function () {
+  it('of :: a -> Signal a [recursive, unbounded]', function () {
     const result = []
     const inner = () => {
       const s = Signal.of()
@@ -143,6 +143,7 @@ describe('Signal', function () {
     const a = Signal.of()
     const b = Signal.of()
     const c = add(a, b)
+
     a(1); b(2); assert.strictEqual(c(), 3)
   })
 
@@ -169,7 +170,7 @@ describe('Signal', function () {
     a(1); assert.strictEqual(d(), a() * 8)
   })
 
-  it('set :: Signal a -> a -> Unit [diamond, unbounded]', function () {
+  it('set :: Signal a -> a -> Unit [diamond/1, unbounded]', function () {
     const a = Signal.of()
     const d = add(addN(2, a), addN(3, a))
 
@@ -180,21 +181,53 @@ describe('Signal', function () {
     assert.strictEqual(calls, 1)
   })
 
-  it.skip('set :: Signal a -> a -> Unit [diamond, bounded]', function () {
+  it('set :: Signal a -> a -> Unit [diamond/1, bound]', function () {
     const a = Signal.of(0)
     const d = add(addN(2, a), addN(3, a))
 
-    let calls = 0
-    effect(() => (calls += 1), d)
-    a(1); assert.strictEqual(d(), 7)
+    const actual = []
+    effect(x => actual.push(x), d)
 
-    // FIXME: `d` should be called twice.
-    assert.strictEqual(calls, 3)
+    a(1); assert.deepStrictEqual(actual, [5, 7])
+  })
+
+  it('set :: Signal a -> a -> Unit [diamond/2, unbounded]', function () {
+    // +--> b --> c --+
+    // a              e
+    // +----> d ------+
+
+    const a = Signal.of()
+    const b = addN(2, a)
+    const c = addN(2, b)
+    const d = addN(3, a)
+    const e = add(c, d)
+
+    const actual = []
+    effect(x => actual.push(x), e)
+
+    a(0); assert.deepStrictEqual(actual, [7])
+  })
+
+  it('set :: Signal a -> a -> Unit [diamond/2, bound]', function () {
+    // +--> b --> c --+
+    // a              e
+    // +----> d ------+
+
+    const a = Signal.of(0)
+    const b = addN(2, a)
+    const c = addN(2, b)
+    const d = addN(3, a)
+    const e = add(c, d)
+
+    const actual = []
+    effect(x => actual.push(x), e)
+
+    a(1); assert.deepStrictEqual(actual, [7, 9])
   })
 })
 
 describe('Signal (higher-level API)', function () {
-  it('map :: Signal s => s a ~> (a -> b) -> s b', function () {
+  it('map :: Signal s => s a ~> (a -> b) -> s b [unbounded]', function () {
     const a = Signal.of()
     const b = R.map(x => x * 2, a)
     assert.strictEqual(b(), undefined)
@@ -202,13 +235,22 @@ describe('Signal (higher-level API)', function () {
     a(2); assert.strictEqual(b(), 4)
   })
 
+  it('map :: Signal s => s a ~> (a -> b) -> s b [bound]', function () {
+    const a = Signal.of(1)
+      .map(x => x * 2)
+      .map(x => x + 1)
+
+    assert.strictEqual(a(), 3)
+  })
+
   it('filter :: Signal s => s a ~> (a -> Boolean) -> s a', function () {
     const a = Signal.of()
     const b = R.filter(x => x % 2 === 0, a)
-    assert.strictEqual(b(), undefined)
-    a(2); assert.strictEqual(b(), 2)
-    a(3); assert.strictEqual(b(), 2)
-    a(4); assert.strictEqual(b(), 4)
+
+    const actual = []
+    effect(x => actual.push(x), b)
+    ;[2, 3, 4].forEach(a)
+    assert.deepStrictEqual(actual, [2, 4])
   })
 
   it('ap :: Signal s => s a ~> s (a -> b) -> s b', function () {
@@ -221,15 +263,21 @@ describe('Signal (higher-level API)', function () {
     a(2); assert.strictEqual(b(), 6)
   })
 
-  // TODO: needs support for 'deferred update'
-  it.skip('chain :: Signal s => s a ~> (a -> s b) -> s b [synchronous]', async function () {
-    const expected = [40, 41, 42]
+  it('chain :: Signal s => s a ~> (a -> s b) -> s b [unbounded]', async function () {
+    const expected = [42]
     const main = Signal.of()
     const output = main.chain(() => R.tap(s => expected.forEach(s), Signal.of()))
 
     const actual = []
     effect(x => actual.push(x), output)
     main('go!'); assert.deepStrictEqual(actual, expected)
+  })
+
+  it('chain :: Signal s => s a ~> (a -> s b) -> s b [bound]', async function () {
+    const expected = 42
+    const main = Signal.of(expected)
+    const output = main.chain(v => Signal.of(v))
+    assert.deepStrictEqual(output(), expected)
   })
 })
 
@@ -363,16 +411,16 @@ describe('Signal (flyd legacy test cases)', function () {
   })
 
   it('[31ca0059]', function () {
-    const result = []
+    const actual = []
     const a = Signal.of(0)
+    const b = a.filter(x => x > 5)
+    // const filter = link(a => {
+    //   if (a() > 5) return a()
+    // }, [a])
 
-    const filter = link(a => {
-      if (a() > 5) return a()
-    }, [a])
-
-    link(x => result.push(x()), [filter])
+    link(x => actual.push(x()), [b])
     ;[4, 6, 2, 8, 3, 4].forEach(a)
-    assert.deepStrictEqual(result, [6, 8])
+    assert.deepStrictEqual(actual, [6, 8])
   })
 
   it('[60e2d35c]', function () {
@@ -431,17 +479,19 @@ describe('Signal (flyd legacy test cases)', function () {
 
   it('[0680810f]', function () {
     let result = ''
-    const external = Signal.of(0)
-    const stream = Signal.of(1)
-    const mapper = val => { result += '' + val; return val + 1 }
+    const a = Signal.of(1)
+    const mapper = x => { result += '' + x; return x + 1 }
 
-    link(() => {
-      external
+    const b = link(v => {
+      const nested = Signal.of(v())
         .map(mapper)
         .map(mapper)
-    }, [stream])
+      return nested()
+    }, [a])
 
-    stream(1); assert.equal(result, '0101')
+    a(2)
+    assert.strictEqual(b(), 4)
+    assert.strictEqual(result, '1223')
   })
 
   it.skip('[99058bf1] - unsupported')
