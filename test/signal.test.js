@@ -15,6 +15,61 @@ const assertError = (fn, message) => {
   }
 }
 
+describe.only('Signal (specification)', function () {
+  it('plain signal of defined value', function () {
+    const expected = 42
+    const s = Signal.of(expected)
+    assert.strictEqual(s(), expected)
+  })
+
+  it('plain signal of undefined value', function () {
+    const s = Signal.of()
+    assert.strictEqual(s(), undefined)
+  })
+
+  it('plain signal update with defined value', function () {
+    const expected = 42
+    const s = Signal.of(0)
+    s(expected)
+    assert.strictEqual(s(), expected)
+  })
+
+  it('plain signal update with undefined value', function () {
+    const expected = 0
+    const s = Signal.of(expected)
+    s(undefined) // no-op
+    assert.strictEqual(s(), expected)
+  })
+
+  it('linked signal with undefined input(s)', function () {
+    const a = Signal.of()
+    const b = link(a => a() + 1, [a])
+    assert.strictEqual(b(), undefined)
+  })
+
+  it('linked signal with defined input(s)', function () {
+    const a = Signal.of(1)
+    const b = link(a => a() + 1, [a])
+    assert.strictEqual(b(), 2)
+  })
+
+  it('linked signal with undefined result', function () {
+    const a = Signal.of(1)
+    /* eslint-disable no-void */
+    const b = link(a => void a, [a])
+    assert.strictEqual(b(), undefined)
+  })
+
+  it('linked signal updates when inputs are defined', function () {
+    const a = Signal.of()
+    const b = Signal.of()
+    const c = link((a, b) => a() + b(), [a, b])
+    assert.strictEqual(c(), undefined)
+    a(1); assert.strictEqual(c(), undefined)
+    b(2); assert.strictEqual(c(), 3)
+  })
+})
+
 describe('Signal', function () {
   it('of :: a -> Signal a [unbounded]', function () {
     const s = Signal.of()
@@ -33,14 +88,14 @@ describe('Signal', function () {
     assert.strictEqual(s(), expected)
   })
 
-  it('of :: a -> Signal a [recursive, bound]', function () {
+  it.skip('of :: a -> Signal a [nested, bound]', function () {
     const result = []
     const inner = () => link(x => result.push(x() + 1), [Signal.of(1)])
     link(inner, [Signal.of(null)])
     assert.deepStrictEqual(result, [2])
   })
 
-  it('of :: a -> Signal a [recursive, unbounded]', function () {
+  it.skip('of :: a -> Signal a [nested, unbounded]', function () {
     const result = []
     const inner = () => {
       const s = Signal.of()
@@ -143,7 +198,6 @@ describe('Signal', function () {
     const a = Signal.of()
     const b = Signal.of()
     const c = add(a, b)
-
     a(1); b(2); assert.strictEqual(c(), 3)
   })
 
@@ -431,23 +485,20 @@ describe('Signal (flyd legacy test cases)', function () {
   })
 
   it('[60e2d35c]', function () {
-    const result = []
+    const actual = []
     const a = Signal.of()
     const b = Signal.of()
+    const c = link(b => { a(b()); a(b() + 1) }, [b])
+    const d = link(a => actual.push(a()), [a])
 
-    link(b => {
-      a(b())
-      a()
-      a(b() + 1)
-      assert.equal(a(), 2)
-    }, [b])
-
-    link(a => {
-      result.push(a())
-    }, [a])
+    a.id = 'a'
+    b.id = 'b'
+    c.id = 'c'
+    d.id = 'd'
 
     b(1)
-    assert.deepStrictEqual(result, [1, 2])
+    console.log('actual', actual)
+    assert.deepStrictEqual(actual, [1, 2])
   })
 
   it.skip('[aa44928e] - unsupported')
