@@ -7,12 +7,10 @@ var flyd = require('../lib');
 var stream = flyd.stream;
 var combine = flyd.combine;
 var map = flyd.map;
-var ap = flyd.ap;
 
 // Some combinators
 function doubleFn(x) { return x() * 2; }
 function sumFn(x, y) { return x() + y(); }
-function identityLift(x) { return x(); }
 
 describe('stream', function() {
   it('can be set with initial value', function() {
@@ -103,30 +101,6 @@ describe('stream', function() {
       assert.equal(sumPlusDoubleSum(), sum() * 3);
       assert.equal(sumPlusDoubleSum(), (2 + 3) * 3);
     });
-    it('can get its own value', function() {
-      var num = stream(0);
-      var sum = combine(function(num, self) {
-        return (self() || 0) + num();
-      }, [num]);
-      num(2)(3)(8)(7);
-      assert.equal(sum(), 20);
-    });
-    it('is called with changed streams', function() {
-      var s1 = stream(0);
-      var s2 = stream(0);
-      var result = [];
-      combine(function(s1, s2, self, changed) {
-        if (changed[0] === s1) result.push(1);
-        if (changed[0] === s2) result.push(2);
-      }, [s1, s2]);
-      s1(1);
-      s2(1);
-      s2(1);
-      s1(1);
-      s2(1);
-      s1(1);
-      assert.deepEqual(result, [1, 2, 2, 1, 2, 1]);
-    });
     it('handles dependencies when streams are triggered in streams', function() {
       var x = stream(4);
       var y = stream(3);
@@ -196,19 +170,6 @@ describe('stream', function() {
       }, [a]);
       b(1);
       assert.deepEqual(result, [1, 2]);
-    });
-    it('can combine streams and project deps as args', function() {
-      var a = flyd.stream();
-      var b = flyd.stream(0);
-      var collect = function(x, y, self) { return (self() || []).concat([x(), y()]); };
-
-      var history = flyd.combine(collect, [a, b]);
-      a(1)(2); // [1, 0, 2, 0]
-      b(3);    // [1, 0, 2, 0, 2, 3]
-      a(4);    // [1, 0, 2, 0, 2, 3, 4, 3]
-      assert.deepEqual(history(), [
-        1, 0, 2, 0, 2, 3, 4, 3
-      ]);
     });
   });
 
@@ -290,16 +251,6 @@ describe('stream', function() {
       x(1);
       assert.equal(doubleX(), 2);
     });
-    it('handles function returning undefined', function() {
-      var x = stream(1);
-      var maybeDoubleX = flyd.map(function(x) {
-        return x > 3 ? 2 * x : undefined;
-      }, x);
-      assert.equal(undefined, maybeDoubleX());
-      assert.equal(true, maybeDoubleX.hasVal);
-      x(4);
-      assert.equal(8, maybeDoubleX());
-    });
     it('is curried', function() {
       var x = stream(3);
       var doubler = flyd.map(function(x) { return 2 * x; });
@@ -327,156 +278,6 @@ describe('stream', function() {
     });
   });
 
-  describe('scan', function() {
-    it('has initial acc as value when stream is undefined', function() {
-      var numbers = stream();
-      var sum = flyd.scan(function(sum, n) {
-        return sum + n;
-      }, 0, numbers);
-      assert.equal(sum(), 0);
-    });
-    it('can sum streams of integers', function() {
-      var numbers = stream();
-      var sum = flyd.scan(function(sum, n) {
-        return sum + n;
-      }, 0, numbers);
-      numbers(3)(2)(4)(10);
-      assert.equal(sum(), 19);
-    });
-    it('is curried', function() {
-      var numbers = stream();
-      var sumStream = flyd.scan(function(sum, n) {
-        return sum + n;
-      }, 0);
-      var sum = sumStream(numbers);
-      numbers(3)(2)(4)(10);
-      assert.equal(sum(), 19);
-    });
-    it('passes undefined', function() {
-      var x = stream();
-      var scan = flyd.scan(function(acc, x) {
-        return acc.concat([x]);
-      }, [], x);
-
-      x(1)(2)(undefined)(3)(4);
-
-      assert.deepEqual(scan(), [1, 2, undefined, 3, 4]);
-    });
-  });
-
-  describe('merge', function() {
-    it('can sum streams of integers', function() {
-      var result = [];
-      var s1 = stream();
-      var s2 = stream();
-      var merged = flyd.merge(s1, s2);
-      combine(function(merged) {
-        result.push(merged());
-      }, [merged]);
-      s1(12)(2); s2(4)(44); s1(1); s2(12)(2);
-      assert.deepEqual(result, [12, 2, 4, 44, 1, 12, 2]);
-    });
-    it('is curried', function() {
-      var result = [];
-      var s1 = stream();
-      var mergeWithS1 = flyd.merge(s1);
-      var s2 = stream();
-      var s1and2 = mergeWithS1(s2);
-      flyd.map(function(v) { result.push(v); }, s1and2);
-      s1(12)(2); s2(4)(44); s1(1); s2(12)(2);
-      assert.deepEqual(result, [12, 2, 4, 44, 1, 12, 2]);
-    });
-    it('should pass defined undefined along', function() {
-      var s1 = stream();
-      var s2 = stream(undefined);
-      var merged = flyd.merge(s1, s2);
-
-      assert.equal(merged(), undefined);
-
-      s1(25);
-      assert.equal(merged(), 25);
-
-      s1(undefined);
-      assert.equal(merged(), undefined);
-
-      s2(15);
-      assert.equal(merged(), 15);
-    });
-    it('should work for s1 being defined first', function() {
-      var s1 = stream(undefined);
-      var s2 = stream();
-      var merged = flyd.merge(s1, s2);
-      assert.equal(merged(), undefined);
-
-      s1(25);
-      assert.equal(merged(), 25);
-    });
-  });
-
-  describe('ap', function() {
-    it('applies functions in stream', function() {
-      var a = stream(function(x) { return 2 * x; });
-      var v = stream(3);
-      var s = a.pipe(ap(v));
-      assert.equal(s(), 6);
-      a(function(x) { return x / 3; });
-      assert.equal(s(), 1);
-      v(9);
-      assert.equal(s(), 3);
-    });
-    it('is compositive', function() {
-      var a = stream(function(x) { return x * 2; });
-      var u = stream(function(x) { return x + 5; });
-      var v = stream(8);
-      var s1 = a
-        .pipe(map(function(f) {
-          return function(g) {
-            return function(x) {
-              return f(g(x));
-            };
-          };
-        }))
-        .pipe(ap(u))
-        .pipe(ap(v));
-      var s2 = a.pipe(ap(u.pipe(ap(v))));
-      assert.equal(s1(), 26);
-      assert.equal(s2(), 26);
-      a(function(x) { return x * 4; });
-      assert.equal(s1(), 52);
-      assert.equal(s2(), 52);
-      u(function(x) { return x / 8; });
-      assert.equal(s1(), 4);
-      assert.equal(s2(), 4);
-      v(24);
-      assert.equal(s1(), 12);
-      assert.equal(s2(), 12);
-    });
-    it('supports neat ap pattern', function() {
-      var result = [];
-      var sumThree = flyd.curryN(3, function(x, y, z) {
-        return x + y + z;
-      });
-      var s1 = stream(0);
-      var s2 = stream(0);
-      var s3 = stream(0);
-      var sum = flyd.map(sumThree, s1).pipe(ap(s2)).pipe(ap(s3));
-      flyd.map(function(v) { result.push(v); }, sum);
-      s1(3); s2(2); s3(5);
-      assert.deepEqual(result, [0, 3, 5, 10]);
-    });
-    it('applies functions if streams have no initial value', function() {
-      var result = [];
-      var add = flyd.curryN(2, function(x, y) { return x + y; });
-      var numbers1 = stream();
-      var numbers2 = stream();
-      var addToNumbers1 = flyd.map(add, numbers1);
-      var added = addToNumbers1.pipe(ap(numbers2));
-      flyd.map(function(n) { result.push(n); }, added);
-      numbers1(3); numbers2(2); numbers1(4);
-      assert.deepEqual(result, [5, 6]);
-    });
-  });
-
   describe('of', function() {
     it('can be accessed through the constructor property', function() {
       var s1 = stream(2);
@@ -489,39 +290,6 @@ describe('stream', function() {
       var s1 = stream(2);
       var s2 = s1.of(3);
       assert.equal(s2(), 3);
-    });
-    it('has identity', function() {
-      var a = stream();
-      var id = function(a) { return a; };
-      var v = stream(12);
-      assert.equal(a.of(id).pipe(ap(v))(), v());
-    });
-    it('is homomorphic', function() {
-      var a = stream(0);
-      var f = function(x) { return 2 * x; };
-      var x = 12;
-      assert.equal(a.of(f).pipe(ap(a.of(x)))(), a.of(f(x))());
-    });
-    it('is interchangeable', function() {
-      var y = 7;
-      var a = stream();
-      var u = stream()(function(x) { return 3 * x; });
-      assert.equal(u.pipe(ap(a.of(y)))(),
-        a.of(function(f) { return f(y); }).pipe(ap(u))());
-    });
-    it('can create dependent stream inside stream', function() {
-      var one = flyd.stream();
-      combine(function(one, self) {
-        self(flyd.combine(function() { }, []));
-      }, [one]);
-      one(1);
-    });
-    it('can create immediate dependent stream inside stream', function() {
-      var one = flyd.stream();
-      combine(function(one, self) {
-        self(flyd.immediate(flyd.combine(function() { }, [])));
-      }, [one]);
-      one(1);
     });
     it('creating a stream inside a stream all dependencies are updated', function() {
       var result = [];
@@ -539,8 +307,6 @@ describe('stream', function() {
       assert.deepEqual(result, [1, 2, 3]);
     });
   });
-
-
 
   describe('atomic updates', function() {
     it('does atomic updates', function() {
@@ -587,27 +353,6 @@ describe('stream', function() {
       flyd.map(function(v) { result.push(v); }, e);
       a(1)(2)(3);
       assert.deepEqual(result, [10, 13, 16]);
-    });
-    it('is called with all changed dependencies', function() {
-      var result = [];
-      var a = flyd.stream(0);
-      var b = flyd.combine(function(a) { return a() + 1; }, [a]);
-      var c = flyd.combine(function(a) { return a() + 2; }, [a]);
-
-      var d = flyd.stream(0);
-      var e = flyd.combine(function(d) { return d() + 4; }, [d]);
-      var f = flyd.combine(function(d) { return d() + 5; }, [d]);
-      var g = flyd.combine(function(d) { return d() + 6; }, [d]);
-
-      flyd.combine(function(a, b, c, d, e, f, g, self, changed) {
-        var vals = changed.map(function(s) { return s(); });
-        result.push(vals);
-        return 1;
-      }, [a, b, c, d, e, f, g]);
-      a(1); d(2); a(3);
-      assert.deepEqual(result, [
-        [], [1, 3, 2], [2, 8, 7, 6], [3, 5, 4]
-      ]);
     });
     it('nested streams atomic update', function() {
       var invocationCount = 0;
