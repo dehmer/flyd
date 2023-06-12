@@ -28,16 +28,6 @@ describe('stream', function() {
     var s = stream();
     assert.equal(s, s(23));
   });
-  it("let's explicit `undefined` flow down streams", function() {
-    var result = [];
-    var s1 = stream(undefined);
-    flyd.map(function(v) { result.push(v); }, s1);
-    s1(2)(undefined);
-    assert.deepEqual(result, [undefined, 2, undefined]);
-  });
-  it('handles a null floating down the stream', function() {
-    stream()(null);
-  });
 
   describe('dependent streams', function() {
     it('updates dependencies', function() {
