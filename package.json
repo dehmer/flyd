@@ -7,6 +7,7 @@
   "scripts": {
     "test": "mocha test/**/*.js test/angular/*.js module/**/test/*.js",
     "test:flyd": "mocha test/index.js",
+    "watch:flyd": "mocha --watch --reporter progress test/index.js",
     "test:module": "mocha module/**/test/*.js",
     "test:signal": "mocha test/signal.test.js",
     "test:angular": "mocha test/angular/*.test.js",
