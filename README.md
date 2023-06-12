@@ -26,7 +26,7 @@ console.log(Signal.of()()) // undefined
 console.log(Signal.of(undefined)()) // undefined
 ```
 
-But once a plain Signal is defined it stays defined:
+But once a Signal is defined it stays defined:
 
 ```javascript
 const s = Signal.of(1)
@@ -43,17 +43,40 @@ const c = link(production, [a, b])
 console.log(c()) // undefined
 a(1); console.log(c()) // undefined; b is undefined
 b(2); console.log(c()) // 3
-
-// production produces undefined value:
-const d = link(a => void 0, [Signal.of(1)])
-console.log(d) => // undefined
 ```
 
-(Anonymous) linked Signal may produce side-effects:
+A linked Signal's production is only evaluated when at least one value of its input signals has changed:
 
 ```javascript
+const seen = []
 const a = Signal.of(1)
-link(a => console.log('a is', a()), [a]) // a is 1
-a(2); // a is 2
+link(a => seen.push(a()), [a])
+;[1, 2, 2, 2, 1].forEach(a)
+console.log(seen) // [1, 2, 1]
 ```
 
+A linked signal may produce an undefined value in which case the signal's current value is not updated:
+
+```javascript
+const a = Signal.of(2)
+const b = link(a => a() < 3 ? a() + 1 : undefined, [a])
+console.log(b()) // 3
+a(3); console.log(b()) // 3
+```
+
+#### Efficient updates
+
+Consider the following dependencies:
+
+```javascript
+const a = Signal.of(1)                        //        a
+const b = link(a => a() + 2, [a])             //       / \
+const c = link(a => a() * 2, [a])             //      b   c
+const d = link((b, c) => b() + c(), [b, c])   //       \ /
+a(3)                                          //        d
+console.log(d()) // 11
+```
+
+With a naive update strategy, `d`'s production would be evaluated twice. Once after `b` was updated and again after the update of `c`. An expensive production degrades performance if evaluated more than necessary and additional (phantom) value tuples are created, which may become a problem. Even though eventually the value of `d`  is correct, this is inefficient at best. 
+
+Simply put, evaluation of `d` production must be deferred until all its inputs were updated.

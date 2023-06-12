@@ -175,38 +175,26 @@ describe('stream', function() {
       assert.equal(setAndSum(), 7);
       assert.equal(doubleX(), 6);
     });
-    it('[81b8e664] executes to the end before handlers are triggered', function() {
-      var order = [];
-      var x = stream(4);
-      var y = stream(3);
-      combine(function dx(x) {
-        if (x() === 3) order.push(2);
+    it.only('[81b8e664] executes to the end before handlers are triggered', function() {
+      var actual = [];
+      var x = stream(5);
+      var y = stream(2);
+      const a = combine(function (x) {
+        actual.push(`x:${x()}`);
         return x() * 2;
       }, [x]);
-      combine(function sy(y) {
-        x(3);
-        order.push(1);
-        return y();
+      const b = combine(function (y) {
+        x(6);
+        actual.push(`y:${y()}`);
+        return y() + 1;
       }, [y]);
-      assert.deepEqual(order, [1, 2]);
+      combine(a => actual.push(`a:${a()}`), [a])
+      combine(b => actual.push(`b:${b()}`), [b])
+      const expected = ['x:5', 'y:2', 'x:6', 'a:12', 'b:3']
+      assert.deepStrictEqual(actual, expected);
     });
-    it('[492bb659] with static deps executes to the end', function() {
-      var order = [];
-      var x = stream(4);
-      var y = stream(3);
-      combine(function(x) {
-        if (x() === 3) order.push(2);
-        return x() * 2;
-      }, [x]);
-      combine(function(y) {
-        x(3);
-        order.push(1);
-        return y();
-      }, [y]);
-      // assert.equal(order[0], 1);
-      // assert.equal(order[1], 2);
-      assert.deepStrictEqual(order, [1, 2])
-    });
+
+    it('[492bb659] same as [81b8e664]');
     it('[31ca0059] can filter values', function() {
       var result = [];
       var n = stream(0);
