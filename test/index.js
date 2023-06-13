@@ -1,7 +1,5 @@
 /* eslint-disable */
 var assert = require('assert');
-var R = require('ramda');
-var t = require('transducers.js');
 
 var flyd = require('../lib');
 var stream = flyd.stream;
@@ -142,7 +140,7 @@ describe('stream', function() {
         if (n() > 5) return n();
       }, [n]);
       flyd.map(function(v) { result.push(v); }, lrg5);
-      n(4)(6)(2)(8)(3)(4);
+      ;[4, 6, 2, 8, 3, 4].forEach(n)
       assert.deepEqual(result, [6, 8]);
     });
     it('can set another stream\'s value multiple times from inside a stream', function() {
@@ -298,6 +296,7 @@ describe('stream', function() {
       a(2);
       assert.deepEqual(result, [7, 10]);
     });
+
     it('does not glitch', function() {
       var result = [];
       var s1 = stream(1);
@@ -308,6 +307,7 @@ describe('stream', function() {
       s1(2)(3)(4);
       assert.deepEqual(result, [4, 8, 12, 16]);
     });
+
     it('handles complex dependency graph', function() {
       var result = [];
       var a = flyd.stream();
@@ -338,6 +338,7 @@ describe('stream', function() {
         invocationCount += 1;
         return val + 1;
       };
+      const s =
       stream(1).map(function() {
         stream(0)
         .map(mapper)
@@ -346,4 +347,12 @@ describe('stream', function() {
       assert.equal(invocationCount, 2);
     });
   });
+
+  it('immediate', function () {
+    const actual = []
+    const a = stream()
+    combine(() => actual.push('+'), [a]) // should not be evaluated
+    flyd.immediate(combine(() => actual.push('*'), [a])) // should be evaluated
+    assert.deepStrictEqual(actual, ['*'])
+  })
 });
