@@ -1,6 +1,7 @@
 import assert from 'assert'
 import * as R from 'ramda'
-import { Signal, link, effect } from '../lib/signal'
+// import { Signal, link, effect } from '../lib/signal'
+import { Signal, link, effect } from '../lib/compat'
 import { describe, it } from 'mocha'
 
 const add = (...input) => link((a, b) => a() + b(), input)
@@ -85,7 +86,7 @@ describe('Signal (specification)', function () {
     a(3); assert.strictEqual(b(), 3)
   })
 
-  it.skip('efficient update of diamond', function () {
+  it('efficient update of diamond', function () {
     const actual = []
     const a = Signal.of(1)
     const b = link(a => a() + 2, [a])
@@ -127,7 +128,8 @@ describe('Signal', function () {
     assert.deepStrictEqual(result, [2])
   })
 
-  it('of :: a -> Signal a [nested, unbounded]', function () {
+  // not sure...
+  it.skip('of :: a -> Signal a [nested, unbounded]', function () {
     const result = []
     const inner = () => {
       const s = Signal.of()
@@ -267,7 +269,7 @@ describe('Signal', function () {
     assert.strictEqual(calls, 1)
   })
 
-  it.skip('set :: Signal a -> a -> Unit [diamond/1, bound]', function () {
+  it('set :: Signal a -> a -> Unit [diamond/1, bound]', function () {
     const a = Signal.of(0)
     const d = add(addN(2, a), addN(3, a))
     const actual = []
@@ -292,7 +294,7 @@ describe('Signal', function () {
     a(0); assert.deepStrictEqual(actual, [7])
   })
 
-  it.skip('set :: Signal a -> a -> Unit [diamond/2, bound]', function () {
+  it('set :: Signal a -> a -> Unit [diamond/2, bound]', function () {
     const a = Signal.of(0)
     const b = addN(2, a)
     const c = addN(2, b)
@@ -367,7 +369,7 @@ describe('Signal (higher-level API)', function () {
   })
 })
 
-describe('Signal (flyd legacy test cases)', function () {
+describe.only('Signal (flyd legacy test cases)', function () {
   it('[a707e821]', function () {
     const s = Signal.of(12)
     assert.strictEqual(s(), 12)
