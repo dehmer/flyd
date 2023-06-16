@@ -2,8 +2,8 @@
 var assert = require('assert');
 var R = require('ramda');
 var t = require('transducers.js');
-// var flyd = require('../lib/legacy');
-var flyd = require('../lib');
+var flyd = require('../lib/legacy');
+// var flyd = require('../lib');
 var stream = flyd.stream;
 var combine = flyd.combine;
 var map = flyd.map;
@@ -629,37 +629,34 @@ describe('stream', function() {
       }, s2)
     });
 
-    it.only('preserves ordering', async function () {
+    it('preserves ordering', async function () {
       const input = stream()
       const a = stream()
       const b = stream()
       const c = stream()
       const output = input.chain(x => x)
 
-      flyd.on(a => console.log('a', a), a)
-      flyd.on(b => console.log('b', b), b)
-      flyd.on(c => console.log('c', c), c)
-
-      const ticks = [
-        () => input(a), () => a(1), () => a(2), () => a(3),
-        () => input(b), () => b(4), () => b(5), () => b(6),
-        () => input(c), () => c(7), () => c(8), () => c(9)
-      ]
-
-      const timer = setInterval(() => {
-        console.log('ticks.length', ticks.length)
-        if (ticks.length) ticks.shift()()
-        else clearInterval(timer)
-      }, 0)
-
       const actual = await new Promise(resolve => {
+        const ticks = [
+          () => input(a), () => a(1), () => a(2), () => a(3),
+          () => input(b), () => b(4), () => b(5), () => b(6),
+          () => input(c), () => c(7), () => c(8), () => c(9)
+        ]
+
+        const timer = setInterval(() => {
+          if (ticks.length) ticks.shift()()
+          else clearInterval(timer)
+        }, 0)
+
         const acc = []
         flyd.on(x => {
-          console.log('x', x())
-          acc.push(x())
+          acc.push(x)
           if (acc.length === 9) resolve(acc)
         }, output)
       })
+
+      const expected = R.range(1, 10)
+      assert.deepStrictEqual(actual, expected)
     })
   });
 

@@ -8,12 +8,13 @@
     "test": "mocha test/**/*.js test/angular/*.js module/**/test/*.js",
     "test:flyd": "mocha test/index.js",
     "test:legacy": "mocha test/legacy.test.js",
+    "test:spec": "mocha test/spec.test.js",
     "watch:flyd": "mocha --watch --reporter progress test/index.js",
     "test:module": "mocha module/**/test/*.js",
     "test:signal": "mocha test/signal.test.js",
     "test:angular": "mocha test/angular/*.test.js",
     "docs": "documentation -f md lib/index.js > API.md",
-    "coverage": "c8 -all --include 'lib/**/*' --reporter=html mocha --recursive"
+    "coverage": "c8 -all --include 'lib/**/*' --reporter=html mocha --recursive test/spec.test.js"
   },
   "directories": {
     "example": "examples",
