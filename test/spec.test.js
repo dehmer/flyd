@@ -1,7 +1,6 @@
 import assert from 'assert'
-import * as R from 'ramda'
-// import { Signal, link, effect } from '../lib/signal'
-import { Signal, link, effect, isDefined, isSignal } from '../lib/compat'
+import { Signal, link, isDefined, isSignal } from '../lib/signal'
+// import { Signal, link, effect, isDefined, isSignal } from '../lib/compat'
 import { describe, it } from 'mocha'
 
 const hasValue = (x, v) =>
@@ -45,8 +44,6 @@ describe('Interface Specification', function () {
     assert.strictEqual(s(), undefined)
   })
 
-  const set = (a, b) => Signal.of(a)(b)
-
   ;[
     ['null', null],
     ['number', 0],
@@ -57,7 +54,9 @@ describe('Interface Specification', function () {
   ].forEach(([label, v]) => {
     // Updating signal with undefined is a no-op.
     it(`set :: Signal s => ${label} -> undefined -> s ${label}`, function () {
-      assert.strictEqual(set(v, undefined)(), v)
+      const s = Signal.of(v)
+      s(undefined)
+      assert.strictEqual(s(), v)
     })
   })
 
@@ -69,7 +68,9 @@ describe('Interface Specification', function () {
     [1, 2]
   ].forEach(([a, b]) => {
     it(`set :: Signal s => ${a} -> ${b} -> s ${b}`, function () {
-      assert.strictEqual(set(a, b)(), b)
+      const s = Signal.of(a)
+      s(b)
+      assert.strictEqual(s(), b)
     })
   })
 
@@ -119,9 +120,9 @@ describe('Interface Specification', function () {
       // Check production is only evaluated when at least on input changed.
       const format = x => x === undefined ? 'undefined' : x
       it(`Evaluation count/set (${label}) (${initial.map(format)}) <- (${next.map(format)})`, function () {
-        const inputs = initial.map(Signal.of)
+        const inputs = initial.map(Signal.of) // 1
         let actual = 0 // evaluation count (including initial)
-        link(() => (actual += 1), inputs)
+        link(() => (actual += 1), inputs) // 2
         next.forEach((value, i) => inputs[i](value))
         assert.strictEqual(actual, expected)
       })
@@ -183,58 +184,47 @@ describe('Interface Specification', function () {
       input(2)
       const expected = [
         'A:1', 'B:1', 'C:1',
-        'C:2', 'B:2', 'A:2' // TODO: investigate [ec2b]
+        'A:2', 'B:2', 'C:2'
       ]
+
       assert.deepStrictEqual(actual, expected)
     })
   })
 
   describe('assorted, questionable test cases', function () {
+    // TODO: relevant?
     it('nested signal [order]', function () {
       const actual = []
       const push = label => x => actual.push(`${label}:${x}`)
       const input = Signal.of(1)
       link(push('A'), [input])
-      link(a => {
+      const output = link(a => {
         push('B')(a)
         const inner = Signal.of(a + 1)
         link(push('D'), [inner])
         inner(a + 2)
         push('C')(a)
-        return inner
+        return inner()
       }, [input])
 
       link(push('E'), [input])
-      const expected = ['A:1', 'B:1', 'C:1', 'D:2', 'D:3', 'E:1']
+      const expected = ['A:1', 'B:1', 'D:2', 'D:3', 'C:1', 'E:1']
       assert.deepStrictEqual(actual, expected)
+      assert.strictEqual(output(), 3)
     })
   })
 
-  // TODO: fixme
-  it.skip('nested plain signal [atomic update]', function () {
-    // scope: 0
+  it('nested plain signal [atomic update]', function () {
     const input = Signal.of(1)
-    const output = link(x => {
-      // scope: 0/1
-      const a = Signal.of(x) // undefined
-      console.log('a', a())
-      return a()
-    }, [input])
+    const output = link(x => Signal.of(x)(), [input])
 
     assert.strictEqual(input(), 1, 'input: unexpected value')
     assert.strictEqual(output(), 1, 'output: unexpected value')
   })
 
-  it.skip('[f3d6] nested linked signal [atomic update]', function () {
-    // scope: 0
+  it('nested linked signal [atomic update]', function () {
     const input = Signal.of(1)
-    const output = link(x => {
-      // scope: 0/1
-      const a = Signal.of(x)
-      const b = link(a => a + 1, [a])
-      return b() // undefined 🤔
-    }, [input])
-
-    console.log(output())
+    const output = link(x => link(a => a + 1, [Signal.of(x)])(), [input])
+    assert.strictEqual(output(), 2)
   })
 })
