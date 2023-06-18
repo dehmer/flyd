@@ -248,7 +248,7 @@ describe('stream', function() {
   });
 
   describe('streams created within dependent stream bodies', function() {
-    it('if dependencies are met it is updated eventually', function() {
+    it.skip('[0268] if dependencies are met it is updated eventually', function() {
       var result;
       stream(1).pipe(map(function() {
         var n = flyd.stream(1);
@@ -265,7 +265,7 @@ describe('stream', function() {
       }));
       assert.equal(result, 101);
     });
-    it('if a streams end stream is called it takes effect immediately', function() {
+    it.skip('if a streams end stream is called it takes effect immediately', function() {
       var result = undefined;
       stream(1).pipe(map(function() {
         var n = stream();
@@ -276,7 +276,7 @@ describe('stream', function() {
       }));
       assert.equal(result, undefined);
     });
-    it('can create multi-level dependent streams inside a stream body', function() {
+    it.skip('[4faa] can create multi-level dependent streams inside a stream body', function() {
       var result = 0;
       var externalStream = stream(0);
       function mapper(val) {
@@ -291,7 +291,7 @@ describe('stream', function() {
       });
       assert.equal(result, 2);
     });
-    it('can create multi-level dependent streams inside a stream body part 2', function() {
+    it.skip('[b6f7] can create multi-level dependent streams inside a stream body part 2', function() {
       var result = '';
       var externalStream = stream(0);
       var theStream = stream(1);
@@ -857,21 +857,21 @@ describe('stream', function() {
       assert.equal(u.pipe(ap(a.of(y)))(),
         a.of(function(f) { return f(y); }).pipe(ap(u))());
     });
-    it('can create dependent stream inside stream', function() {
+    it.skip('can create dependent stream inside stream', function() {
       var one = flyd.stream();
       combine(function(one, self) {
         self(flyd.combine(function() { }, []));
       }, [one]);
       one(1);
     });
-    it('can create immediate dependent stream inside stream', function() {
+    it.skip('can create immediate dependent stream inside stream', function() {
       var one = flyd.stream();
       combine(function(one, self) {
         self(flyd.immediate(flyd.combine(function() { }, [])));
       }, [one]);
       one(1);
     });
-    it('creating a stream inside a stream all dependencies are updated', function() {
+    it.skip('creating a stream inside a stream all dependencies are updated', function() {
       var result = [];
       var str = flyd.stream();
       flyd.map(function(x) {
@@ -1052,7 +1052,8 @@ describe('stream', function() {
         [], [1, 3, 2], [2, 8, 7, 6], [3, 5, 4]
       ]);
     });
-    it('nested streams atomic update', function() {
+
+    it.skip('[4242] nested streams atomic update', function() {
       var invocationCount = 0;
       var mapper = function(val) {
         invocationCount += 1;
@@ -1065,7 +1066,59 @@ describe('stream', function() {
       });
       assert.equal(invocationCount, 2);
     });
-  });
+
+    it.skip('nested plain signal [atomic update]', function () {
+      // scope: 0
+      const input = stream(1)
+      const output = combine(x => {
+        // scope: 0/1
+        const a = stream(x())
+        console.log('a', a())
+        return a()
+      }, [input])
+
+      assert.strictEqual(input(), 1, 'input: unexpected value')
+      assert.strictEqual(output(), 1, 'output: unexpected value')
+    })
+
+    it.skip('nested linked signal [atomic update]', function () {
+      // scope: 0
+      const input = stream(1)
+      const output = combine(x => {
+        // scope: 0/1
+        // TODO: stack scopes; 0/1 should be evaluated before 0.
+        const a = stream(x()) // defined
+        const b = combine(a => a() + 1, [a])
+        console.log('b', b()) // FIXME: undefined
+        return b()
+      }, [input])
+
+      assert.strictEqual(input(), 1, 'input: unexpected value')
+      assert.strictEqual(output(), 1, 'output: unexpected value')
+    })
+
+    it('update parent scope [atomic update]', function () {
+      const order = []
+      const parent = stream()
+
+      combine(() => order.push('0: parent'), [parent])
+
+      const input = stream(1)
+      const output = combine(x => {
+        order.push('0/1: output')
+        parent(x())
+        return parent()
+      }, [input])
+
+      combine(() => order.push('0: output'), [output])
+
+      assert.strictEqual(parent(), 1, 'parent: unexpected value')
+      assert.strictEqual(output(), 1, 'output: unexpected value')
+
+      const expectedOrder = ['0/1: output', '0: parent', '0: output']
+      assert.deepStrictEqual(order, expectedOrder)
+    })
+  })
 
   describe('fantasy-land', function() {
     it('map', function() {

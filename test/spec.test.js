@@ -190,25 +190,51 @@ describe('Interface Specification', function () {
   })
 
   describe('assorted, questionable test cases', function () {
-    describe('nested signals', function () {
-      it('of', function () {
-        const actual = []
-        const push = label => x => actual.push(`${label}:${x}`)
-        const input = Signal.of(1)
-        link(push('A'), [input])
-        link(a => {
-          push('B')(a)
-          const inner = Signal.of(a + 1)
-          link(push('D'), [inner])
-          inner(a + 2)
-          push('C')(a)
-          return inner
-        }, [input])
+    it('nested signal [order]', function () {
+      const actual = []
+      const push = label => x => actual.push(`${label}:${x}`)
+      const input = Signal.of(1)
+      link(push('A'), [input])
+      link(a => {
+        push('B')(a)
+        const inner = Signal.of(a + 1)
+        link(push('D'), [inner])
+        inner(a + 2)
+        push('C')(a)
+        return inner
+      }, [input])
 
-        link(push('E'), [input])
-        const expected = ['A:1', 'B:1', 'C:1', 'D:2', 'D:3', 'E:1']
-        assert.deepStrictEqual(actual, expected)
-      })
+      link(push('E'), [input])
+      const expected = ['A:1', 'B:1', 'C:1', 'D:2', 'D:3', 'E:1']
+      assert.deepStrictEqual(actual, expected)
     })
+  })
+
+  // TODO: fixme
+  it.skip('nested plain signal [atomic update]', function () {
+    // scope: 0
+    const input = Signal.of(1)
+    const output = link(x => {
+      // scope: 0/1
+      const a = Signal.of(x) // undefined
+      console.log('a', a())
+      return a()
+    }, [input])
+
+    assert.strictEqual(input(), 1, 'input: unexpected value')
+    assert.strictEqual(output(), 1, 'output: unexpected value')
+  })
+
+  it.skip('[f3d6] nested linked signal [atomic update]', function () {
+    // scope: 0
+    const input = Signal.of(1)
+    const output = link(x => {
+      // scope: 0/1
+      const a = Signal.of(x)
+      const b = link(a => a + 1, [a])
+      return b() // undefined 🤔
+    }, [input])
+
+    console.log(output())
   })
 })

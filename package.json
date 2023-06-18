@@ -14,7 +14,8 @@
     "test:signal": "mocha test/signal.test.js",
     "test:angular": "mocha test/angular/*.test.js",
     "docs": "documentation -f md lib/index.js > API.md",
-    "coverage": "c8 -all --include 'lib/**/*' --reporter=html mocha --recursive test/spec.test.js"
+    "coverage:spec": "c8 -all --include 'lib/**/*' --reporter=html mocha --recursive test/spec.test.js",
+    "coverage:legacy": "c8 -all --include 'lib/**/*' --reporter=html mocha --recursive test/legacy.test.js"
   },
   "directories": {
     "example": "examples",
