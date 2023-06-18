@@ -1,12 +1,12 @@
 import assert from 'assert'
 import * as R from 'ramda'
-// import { Signal, link, effect } from '../lib/signal'
-import { Signal, link, effect } from '../lib/compat'
+import { Signal, link, effect } from '../lib/signal'
+// import { Signal, link, effect } from '../lib/compat'
 import { describe, it } from 'mocha'
 
-const add = (...input) => link((a, b) => a() + b(), input)
-const addN = (n, input) => link(a => a() + n, [input])
-const double = input => link(x => x() * 2, [input])
+const add = (...input) => link((a, b) => a + b, input)
+const addN = (n, input) => link(a => a + n, [input])
+const double = input => link(x => x * 2, [input])
 
 const expectError = (fn, message) => {
   try {
@@ -51,20 +51,20 @@ describe('Signal (specification)', function () {
 
   it('linked signal with defined input(s)', function () {
     const a = Signal.of(1)
-    const b = link(a => a() + 1, [a])
+    const b = link(a => a + 1, [a])
     assert.strictEqual(b(), 2)
   })
 
   it('linked signal is read-only', function () {
     const a = Signal.of(1)
-    const b = link(a => a() + 1, [a])
+    const b = link(a => a + 1, [a])
     expectError(() => b(0), 'read-only signal')
   })
 
   it('linked signal updates when inputs are defined', function () {
     const a = Signal.of()
     const b = Signal.of()
-    const c = link((a, b) => a() + b(), [a, b])
+    const c = link((a, b) => a + b, [a, b])
     assert.strictEqual(c(), undefined)
     a(1); assert.strictEqual(c(), undefined)
     b(2); assert.strictEqual(c(), 3)
@@ -73,7 +73,7 @@ describe('Signal (specification)', function () {
   it('linked signal updates when input values changed', function () {
     const seen = []
     const a = Signal.of(1)
-    link(a => seen.push(a()), [a])
+    link(a => seen.push(a), [a])
     ;[1, 2, 2, 2, 3, 1].forEach(a)
     assert.deepStrictEqual(seen, [1, 2, 3, 1])
   })
@@ -81,7 +81,7 @@ describe('Signal (specification)', function () {
   it('linked signal with undefined production result', function () {
     const a = Signal.of(2)
     // production is undefined for a() >= 3:
-    const b = link(a => a() < 3 ? a() + 1 : undefined, [a])
+    const b = link(a => a < 3 ? a + 1 : undefined, [a])
     assert.strictEqual(b(), 3)
     a(3); assert.strictEqual(b(), 3)
   })
@@ -89,11 +89,11 @@ describe('Signal (specification)', function () {
   it('efficient update of diamond', function () {
     const actual = []
     const a = Signal.of(1)
-    const b = link(a => a() + 2, [a])
-    const c = link(a => a() * 2, [a])
-    const d = link((b, c) => b() + c(), [b, c])
+    const b = link(a => a + 2, [a])
+    const c = link(a => a * 2, [a])
+    const d = link((b, c) => b + c, [b, c])
 
-    link(d => actual.push(d()), [d])
+    link(d => actual.push(d), [d])
 
     a(3)
 
@@ -123,7 +123,7 @@ describe('Signal', function () {
 
   it('of :: a -> Signal a [nested, bound]', function () {
     const result = []
-    const inner = () => link(x => result.push(x() + 1), [Signal.of(1)])
+    const inner = () => link(x => result.push(x + 1), [Signal.of(1)])
     link(inner, [Signal.of(null)])
     assert.deepStrictEqual(result, [2])
   })
@@ -133,7 +133,7 @@ describe('Signal', function () {
     const result = []
     const inner = () => {
       const s = Signal.of()
-      link(x => result.push(x() + 1), [s])
+      link(x => result.push(x + 1), [s])
       s(1)
       return s
     }
@@ -147,7 +147,7 @@ describe('Signal', function () {
     [undefined, undefined, '"fn" is undefined'],
     [x => x, undefined, '"inputs" is undefined'],
     [x => x, 'x', '"inputs" is not an array'],
-    [x => x, [], '"inputs" is empty'],
+    [x => x, [], '"inputs" is empty array'],
     [x => x, ['x'], '"inputs" contains non-signal value']
   ].forEach(([fn, inputs, message]) => {
     it(`link :: (* -> b) -> [Signal] -> Signal b [${message}]`, function () {
@@ -159,7 +159,7 @@ describe('Signal', function () {
 
   it('link :: (* -> b) -> [Signal] -> Signal b [unbounded 1/1]', function () {
     const s = Signal.of()
-    const double = link(x => x() * 2, [s])
+    const double = link(x => x * 2, [s])
     assert.strictEqual(double(), undefined)
   })
 
@@ -306,12 +306,6 @@ describe('Signal', function () {
 
     a(1); assert.deepStrictEqual(actual, [7, 9])
   })
-
-  it('set :: Signal a -> a -> Unit [update input]', function () {
-    const a = Signal.of(2)
-    const b = link(a => { a(3); return a() }, [a])
-    assert.strictEqual(b(), 3)
-  })
 })
 
 describe('Signal (higher-level API)', function () {
@@ -369,7 +363,7 @@ describe('Signal (higher-level API)', function () {
   })
 })
 
-describe.only('Signal (flyd legacy test cases)', function () {
+describe('Signal (flyd legacy test cases)', function () {
   it('[a707e821]', function () {
     const s = Signal.of(12)
     assert.strictEqual(s(), 12)
@@ -390,21 +384,21 @@ describe.only('Signal (flyd legacy test cases)', function () {
 
   it('[dcaeb6c1]', function () {
     const x = Signal.of(3)
-    const x2 = link(x => x() * 2, [x])
+    const x2 = link(x => x * 2, [x])
     assert.strictEqual(x2(), x() * 2)
   })
 
   it('[1da393a7]', function () {
     const x = Signal.of(3)
     const y = Signal.of(4)
-    const sum = link((x, y) => x() + y(), [x, y])
+    const sum = link((x, y) => x + y, [x, y])
     assert.strictEqual(sum(), x() + y())
   })
 
   it('[24116cd6]', function () {
     const x = Signal.of(3)
     const y = Signal.of(4)
-    const sum = link((x, y) => x() + y(), [x, y])
+    const sum = link((x, y) => x + y, [x, y])
     assert.equal(sum(), 7)
     x(12); assert.equal(sum(), 16)
     y(8); assert.equal(sum(), 20)
@@ -415,7 +409,7 @@ describe.only('Signal (flyd legacy test cases)', function () {
     const y = Signal.of(4)
     let times = 0
 
-    const sum = link((x, y) => x() + y(), [x, y])
+    const sum = link((x, y) => x + y, [x, y])
     link(() => times++, [sum])
 
     assert.equal(sum(), 7)
@@ -429,7 +423,7 @@ describe.only('Signal (flyd legacy test cases)', function () {
     const y = Signal.of()
     let called = 0
 
-    link((x, y) => { called++; return x() + y() }, [x, y])
+    link((x, y) => { called++; return x + y }, [x, y])
     x(2); x(1); y(2); y(4); x(2)
     assert.strictEqual(called, 3)
   })
@@ -437,9 +431,9 @@ describe.only('Signal (flyd legacy test cases)', function () {
   it('[ee93ce4a]', function () {
     const x = Signal.of(3)
     const y = Signal.of(4)
-    const a = link((x, y) => x() + y(), [x, y])
-    const b = link(a => a() * 2, [a])
-    const c = link((a, b) => a() + b(), [a, b])
+    const a = link((x, y) => x + y, [x, y])
+    const b = link(a => a * 2, [a])
+    const c = link((a, b) => a + b, [a, b])
     x(12); assert.strictEqual(c(), 48) // (12 + 4) * 2 + (12 + 4)
     y(3); assert.strictEqual(c(), 45) // (12 + 3) * 2 + (12 + 3)
     x(2); assert.strictEqual(c(), 15) // (2 + 3) * 2 + (2 + 3)
@@ -452,8 +446,8 @@ describe.only('Signal (flyd legacy test cases)', function () {
     const x = Signal.of(4)
     const y = Signal.of(3)
     const z = Signal.of(1)
-    const a = link(x => x() * 2, [x])
-    const b = link((y, z) => { x(3); return z() + y() }, [y, z])
+    const a = link(x => x * 2, [x])
+    const b = link((y, z) => { x(3); return z + y }, [y, z])
     z(4)
 
     assert.strictEqual(b(), 7)
@@ -465,10 +459,10 @@ describe.only('Signal (flyd legacy test cases)', function () {
     const push = (label, value) => actual.push(`${label}:${value}`)
     const x = Signal.of(5)
     const y = Signal.of(2)
-    const a = link(x => { push('x', x()); return x() * 2 }, [x])
-    const b = link(y => { x(6); push('y', y()); return y() + 1 }, [y])
-    link(a => push('a', a()), [a])
-    link(b => push('b', b()), [b])
+    const a = link(x => { push('x', x); return x * 2 }, [x])
+    const b = link(y => { x(6); push('y', y); return y + 1 }, [y])
+    link(a => push('a', a), [a])
+    link(b => push('b', b), [b])
     const expected = ['x:5', 'y:2', 'x:6', 'a:12', 'b:3']
     //    actual     ['x:5', 'x:6', 'y:2', 'a:12', 'b:3']
     assert.deepStrictEqual(actual, expected)
@@ -482,7 +476,7 @@ describe.only('Signal (flyd legacy test cases)', function () {
     //   if (a() > 5) return a()
     // }, [a])
 
-    link(x => actual.push(x()), [b])
+    link(x => actual.push(x), [b])
     ;[4, 6, 2, 8, 3, 4].forEach(a)
     assert.deepStrictEqual(actual, [6, 8])
   })
@@ -491,19 +485,19 @@ describe.only('Signal (flyd legacy test cases)', function () {
     const actual = []
     const a = Signal.of()
     const b = Signal.of()
-    link(b => { a(b()); a(b() + 1) }, [b])
-    link(a => actual.push(a()), [a])
+    link(b => { a(b); a(b + 1) }, [b])
+    link(a => actual.push(a), [a])
 
     b(1)
 
-    assert.deepStrictEqual(actual, [1, 2])
+    assert.deepStrictEqual(actual, [2])
   })
 
   it.skip('[aa44928e] - unsupported')
 
   it('[c8a33f00]', function () {
     let result
-    link(() => link(v => (result = v() + 100), [Signal.of(1)]), [Signal.of(null)])
+    link(() => link(v => (result = v + 100), [Signal.of(1)]), [Signal.of(null)])
     assert.strictEqual(result, 101)
   })
 
@@ -511,7 +505,7 @@ describe.only('Signal (flyd legacy test cases)', function () {
     let result
     link(() => {
       const n = Signal.of()
-      link(v => (result = v() + 100), [n])
+      link(v => (result = v + 100), [n])
       n(1)
     }, [Signal.of(null)])
     assert.strictEqual(result, 101)
@@ -539,7 +533,7 @@ describe.only('Signal (flyd legacy test cases)', function () {
     const mapper = x => { result += '' + x; return x + 1 }
 
     const b = link(v => {
-      const nested = Signal.of(v())
+      const nested = Signal.of(v)
         .map(mapper)
         .map(mapper)
       return nested()

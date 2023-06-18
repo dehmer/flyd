@@ -128,12 +128,17 @@ describe('Interface Specification', function () {
       })
     })
 
-    it('Evaluation count/set [diamond]', function () {
-      let actual = 0 // evaluation count (including initial)
-      const inc = () => (actual += 1)
-      const input = Signal.of()
-      diamond(inc, input)
-      input(2); assert.strictEqual(actual, 1)
+    ;[
+      [undefined, 1],
+      [1, 2]
+    ].forEach(([initial, expected]) => {
+      it(`Evaluation count/set [diamond] (${initial})`, function () {
+        let actual = 0 // evaluation count (including initial)
+        const inc = () => (actual += 1)
+        const input = Signal.of(initial)
+        diamond(inc, input)
+        input(2); assert.strictEqual(actual, expected)
+      })
     })
 
     ;[
@@ -191,9 +196,9 @@ describe('Interface Specification', function () {
     })
   })
 
-  describe('assorted, questionable test cases', function () {
+  describe('nested signal', function () {
     // TODO: relevant?
-    it('nested signal [order]', function () {
+    it('evaluation order', function () {
       const actual = []
       const push = label => x => actual.push(`${label}:${x}`)
       const input = Signal.of(1)
@@ -212,19 +217,19 @@ describe('Interface Specification', function () {
       assert.deepStrictEqual(actual, expected)
       assert.strictEqual(output(), 3)
     })
-  })
 
-  it('nested plain signal [atomic update]', function () {
-    const input = Signal.of(1)
-    const output = link(x => Signal.of(x)(), [input])
+    it('atomic update: plain signal', function () {
+      const input = Signal.of(1)
+      const output = link(x => Signal.of(x)(), [input])
 
-    assert.strictEqual(input(), 1, 'input: unexpected value')
-    assert.strictEqual(output(), 1, 'output: unexpected value')
-  })
+      assert.strictEqual(input(), 1, 'input: unexpected value')
+      assert.strictEqual(output(), 1, 'output: unexpected value')
+    })
 
-  it('nested linked signal [atomic update]', function () {
-    const input = Signal.of(1)
-    const output = link(x => link(a => a + 1, [Signal.of(x)])(), [input])
-    assert.strictEqual(output(), 2)
+    it('atomic update: linked signal', function () {
+      const input = Signal.of(1)
+      const output = link(x => link(a => a + 1, [Signal.of(x)])(), [input])
+      assert.strictEqual(output(), 2)
+    })
   })
 })
