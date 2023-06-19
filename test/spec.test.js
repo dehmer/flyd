@@ -75,7 +75,7 @@ describe('Interface Specification', function () {
     })
   })
 
-  describe('[TypeError] link :: Signal s => (...[s any] -> b) -> [s any]', function () {
+  describe('[TypeError] link :: Signal s => (...[any] -> b) -> [s any] -> s b', function () {
     [
       [undefined, undefined, '"fn" is undefined'],
       [x => x, undefined, '"inputs" is undefined'],
@@ -91,7 +91,7 @@ describe('Interface Specification', function () {
     })
   })
 
-  describe('link :: Signal s => (...[any] -> b) -> [s any]', function () {
+  describe('link :: Signal s => (...[any] -> b) -> [s any] -> s b', function () {
     it('read-only', function () {
       const input = Signal.of(1)
       const output = link(a => a + 1, input)
