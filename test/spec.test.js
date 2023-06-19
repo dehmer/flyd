@@ -1,4 +1,5 @@
 import assert from 'assert'
+import * as R from 'ramda'
 import { Signal, link, isDefined, isSignal } from '../lib/signal'
 // import { Signal, link, effect, isDefined, isSignal } from '../lib/compat'
 import { describe, it } from 'mocha'
@@ -7,8 +8,8 @@ const hasValue = (x, v) =>
   isSignal(x) && isDefined(x) && x() === v
 
 const diamond = (fn, input) => link(fn, [
-  link(a => a + 1, [input]),
-  link(a => a + 2, [input])
+  link(a => a + 1, input),
+  link(a => a + 2, input)
 ])
 
 const expectError = (fn, message) => {
@@ -80,9 +81,9 @@ describe('Interface Specification', function () {
       [x => x, undefined, '"inputs" is undefined'],
       [x => x, 'x', '"inputs" is not an array'],
       [x => x, [], '"inputs" is empty array'],
-      [x => x, ['x'], '"inputs" contains non-signal value'],
-      [x => x, [null], '"inputs" contains null or undefined value'],
-      [x => x, [undefined], '"inputs" contains null or undefined value']
+      [x => x, ['x'], '"inputs" contains non-signal or falsy value'],
+      [x => x, [null], '"inputs" contains non-signal or falsy value'],
+      [x => x, [undefined], '"inputs" contains non-signal or falsy value']
     ].forEach(([fn, inputs, message]) => {
       it(`TypeError: ${message}`, function () {
         expectError(() => link(fn, inputs), message)
@@ -91,16 +92,23 @@ describe('Interface Specification', function () {
   })
 
   describe('link :: Signal s => (...[any] -> b) -> [s any]', function () {
-    [
+    it('read-only', function () {
+      const input = Signal.of(1)
+      const output = link(a => a + 1, input)
+      expectError(() => output(3), 'read-only signal')
+    })
+
+    ;[
       ['1-ary', [undefined], 0],
       ['1-ary', [1], 1],
+      ['1-ary', 1, 1], // single signal, no array
       ['2-ary', [undefined, undefined], 0],
       ['2-ary', [1, undefined], 0],
       ['2-ary', [1, 2], 1]
     ].forEach(([label, values, expected]) => {
       // Check production is only evaluated when all inputs are defined.
-      it(`Evaluation count/of (${label}) (${values.map(x => x === undefined ? 'undefined' : x)})`, function () {
-        const inputs = values.map(Signal.of)
+      it(`Evaluation count/of (${label}) (${values})`, function () {
+        const inputs = Array.isArray(values) ? values.map(Signal.of) : Signal.of(values)
         let actual = 0 // evaluation count
         link(() => (actual += 1), inputs)
         assert.strictEqual(actual, expected)
@@ -182,9 +190,9 @@ describe('Interface Specification', function () {
       const actual = []
       const push = label => x => actual.push(`${label}:${x}`)
       const input = Signal.of(1)
-      link(push('A'), [input])
-      link(push('B'), [input])
-      link(push('C'), [input])
+      link(push('A'), input)
+      link(push('B'), input)
+      link(push('C'), input)
 
       input(2)
       const expected = [
@@ -202,7 +210,7 @@ describe('Interface Specification', function () {
       const actual = []
       const push = label => x => actual.push(`${label}:${x}`)
       const input = Signal.of(1)
-      link(push('A'), [input])
+      link(push('A'), input)
       const output = link(a => {
         push('B')(a)
         const inner = Signal.of(a + 1)
@@ -210,9 +218,9 @@ describe('Interface Specification', function () {
         inner(a + 2)
         push('C')(a)
         return inner()
-      }, [input])
+      }, input)
 
-      link(push('E'), [input])
+      link(push('E'), input)
       const expected = ['A:1', 'B:1', 'D:2', 'D:3', 'C:1', 'E:1']
       assert.deepStrictEqual(actual, expected)
       assert.strictEqual(output(), 3)
@@ -220,7 +228,7 @@ describe('Interface Specification', function () {
 
     it('atomic update: plain signal', function () {
       const input = Signal.of(1)
-      const output = link(x => Signal.of(x)(), [input])
+      const output = link(x => Signal.of(x)(), input)
 
       assert.strictEqual(input(), 1, 'input: unexpected value')
       assert.strictEqual(output(), 1, 'output: unexpected value')
@@ -228,8 +236,94 @@ describe('Interface Specification', function () {
 
     it('atomic update: linked signal', function () {
       const input = Signal.of(1)
-      const output = link(x => link(a => a + 1, [Signal.of(x)])(), [input])
+      const output = link(x => link(a => a + 1, Signal.of(x))(), input)
       assert.strictEqual(output(), 2)
+    })
+  })
+
+  describe('Fantasy Land', function () {
+    it('map :: Signal s => s a ~> (a -> b) -> s b [unbounded]', function () {
+      const a = Signal.of()
+      const b = R.map(x => x * 2, a)
+      assert.strictEqual(b(), undefined)
+      a(1); assert.strictEqual(b(), 2)
+      a(2); assert.strictEqual(b(), 4)
+    })
+
+    it('map :: Signal s => s a ~> (a -> b) -> s b [bound]', function () {
+      const a = Signal.of(1)
+        .map(x => x * 2)
+        .map(x => x + 1)
+
+      assert.strictEqual(a(), 3)
+    })
+
+    it('filter :: Signal s => s a ~> (a -> Boolean) -> s a', function () {
+      const a = Signal.of()
+      const b = R.filter(x => x % 2 === 0, a)
+
+      const actual = []
+      link(x => actual.push(x), [b])
+      ;[2, 3, 4].forEach(a)
+      assert.deepStrictEqual(actual, [2, 4])
+    })
+
+    it('ap :: Signal s => s a ~> s (a -> b) -> s b', function () {
+      const a = Signal.of()
+      const fn = Signal.of(x => x + 1)
+      const b = R.ap(fn, a)
+      assert.strictEqual(b(), undefined)
+      a(1); assert.strictEqual(b(), 2)
+      fn(x => x * 3); assert.strictEqual(b(), 3)
+      a(2); assert.strictEqual(b(), 6)
+    })
+
+    it('chain :: Signal s => s a ~> (a -> s b) -> s b [unbounded]', async function () {
+      const expected = [42]
+      const input = Signal.of()
+      const output = input.chain(() => R.tap(s => expected.forEach(s), Signal.of()))
+
+      const actual = []
+      link(x => actual.push(x), [output])
+      input('go!'); assert.deepStrictEqual(actual, expected)
+    })
+
+    it('chain :: Signal s => s a ~> (a -> s b) -> s b [bound]', async function () {
+      const expected = 42
+      const main = Signal.of(expected)
+      const output = main.chain(v => Signal.of(v))
+      assert.deepStrictEqual(output(), expected)
+    })
+
+    it('chain: preserves ordering', async function () {
+      const input = Signal.of()
+      const a = Signal.of()
+      const b = Signal.of()
+      const c = Signal.of()
+      const output = input.chain(x => x)
+
+      const actual = await new Promise(resolve => {
+        const ticks = [
+          () => input(a), () => a(1), () => a(2), () => a(3),
+          () => input(b), () => b(4), () => b(5), () => b(6),
+          () => input(c), () => c(7), () => c(8), () => c(9),
+          () => input(null)
+        ]
+
+        const timer = setInterval(() => {
+          if (ticks.length) ticks.shift()()
+          else clearInterval(timer)
+        }, 0)
+
+        const acc = []
+        link(x => {
+          acc.push(x)
+          if (acc.length === 9) resolve(acc)
+        }, [output])
+      })
+
+      const expected = R.range(1, 10)
+      assert.deepStrictEqual(actual, expected)
     })
   })
 })
