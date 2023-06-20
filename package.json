@@ -5,18 +5,9 @@
   "main": "lib/index.js",
   "unpkg": "flyd.min.js",
   "scripts": {
-    "test": "mocha test/**/*.js test/angular/*.js module/**/test/*.js",
-    "test:flyd": "mocha test/index.js",
-    "test:legacy": "mocha test/legacy.test.js",
-    "test:spec": "mocha test/spec.test.js",
-    "watch:flyd": "mocha --watch --reporter progress test/index.js",
-    "test:module": "mocha module/**/test/*.js",
-    "test:signal": "mocha test/signal.test.js",
-    "test:angular": "mocha test/angular/*.test.js",
+    "test": "mocha --recursive test/",
     "docs": "documentation -f md lib/index.js > API.md",
-    "coverage:spec": "c8 -all --include 'lib/**/*' --reporter=html mocha --recursive test/spec.test.js",
-    "coverage:signal": "c8 -all --include 'lib/**/*' --reporter=html mocha --recursive test/signal.test.js",
-    "coverage:legacy": "c8 -all --include 'lib/**/*' --reporter=html mocha --recursive test/legacy.test.js"
+    "coverage": "c8 -all --include 'lib/**/*' --reporter=html mocha --recursive test/"
   },
   "directories": {
     "example": "examples",
