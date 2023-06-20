@@ -1,10 +1,12 @@
 import assert from 'assert'
-import * as R from 'ramda'
-import {
-  Signal, link, isDefined, isSignal,
-  startWith, scan, tap, loop
-} from '../lib/signal'
 import { describe, it } from 'mocha'
+import * as R from 'ramda'
+import Signal from '../lib/signal'
+
+const {
+  isDefined, isSignal,
+  link, startWith, scan, tap, loop
+} = Signal
 
 const hasValue = (x, v) =>
   isSignal(x) && isDefined(x) && x() === v
