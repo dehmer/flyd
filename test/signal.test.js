@@ -5,7 +5,7 @@ import Signal from '../lib/signal'
 
 const {
   isDefined, isSignal,
-  link, startWith, scan, tap, loop
+  link, startWith, scan, tap, loop, lift
 } = Signal
 
 const hasValue = (x, v) =>
@@ -245,7 +245,7 @@ describe('Interface Specification', function () {
   })
 
   describe('Fantasy Land', function () {
-    it('map :: Signal s => s a ~> (a -> b) -> s b [undefined]', function () {
+    it('map :: Signal s => (a -> b) -> s a -> s b [2d75]', function () {
       const a = Signal.of()
       const b = R.map(x => x * 2, a)
       assert.strictEqual(b(), undefined)
@@ -253,7 +253,7 @@ describe('Interface Specification', function () {
       a(2); assert.strictEqual(b(), 4)
     })
 
-    it('map :: Signal s => s a ~> (a -> b) -> s b [defined]', function () {
+    it('map :: Signal s => (a -> b) -> s a -> s b [af73]', function () {
       const a = Signal.of(1)
         .map(x => x * 2)
         .map(x => x + 1)
@@ -261,7 +261,7 @@ describe('Interface Specification', function () {
       assert.strictEqual(a(), 3)
     })
 
-    it('filter :: Signal s => s a ~> (a -> Boolean) -> s a', function () {
+    it('filter :: Signal s => (a -> Boolean) -> s a -> s a', function () {
       const a = Signal.of()
       const b = R.filter(x => x % 2 === 0, a)
 
@@ -271,7 +271,17 @@ describe('Interface Specification', function () {
       assert.deepStrictEqual(actual, [2, 4])
     })
 
-    it('ap :: Signal s => s a ~> s (a -> b) -> s b', function () {
+    it('reject :: Signal s => (a -> Boolean) -> s a -> s a', function () {
+      const a = Signal.of()
+      const b = R.reject(x => x % 2 === 0, a)
+
+      const actual = []
+      link(x => actual.push(x), [b])
+      ;[1, 2, 3, 4].forEach(a)
+      assert.deepStrictEqual(actual, [1, 3])
+    })
+
+    it('ap :: Signal s => s (a -> b) -> s a -> s b', function () {
       const a = Signal.of()
       const fn = Signal.of(x => x + 1)
       const b = R.ap(fn, a)
@@ -281,7 +291,7 @@ describe('Interface Specification', function () {
       a(2); assert.strictEqual(b(), 6)
     })
 
-    it('chain :: Signal s => s a ~> (a -> s b) -> s b [undefined]', async function () {
+    it('chain :: Signal s => (a -> s b) -> s a -> s b [3646]', async function () {
       const expected = [42]
       const input = Signal.of()
       const output = input.chain(() => R.tap(s => expected.forEach(s), Signal.of()))
@@ -291,14 +301,15 @@ describe('Interface Specification', function () {
       input('go!'); assert.deepStrictEqual(actual, expected)
     })
 
-    it('chain :: Signal s => s a ~> (a -> s b) -> s b [bound]', async function () {
+    it('chain :: Signal s => (a -> s b) -> s a -> s b [4ae4]', async function () {
       const expected = 42
       const main = Signal.of(expected)
       const output = main.chain(v => Signal.of(v))
       assert.deepStrictEqual(output(), expected)
     })
 
-    it('chain: preserves ordering', async function () {
+    it('chain :: Signal s => (a -> s b) -> s a -> s b [9cc4]', async function () {
+      // Preserve ordering.
       const input = Signal.of()
       const a = Signal.of()
       const b = Signal.of()
@@ -389,6 +400,15 @@ describe('Interface Specification', function () {
       }, [], a)
       R.range(0, 20).forEach(a)
       assert.strictEqual(b(), 14.5) // sum(10..19) / 10
+    })
+
+    it('lift :: Signal s => ((a -> b -> ...) -> x) -> [s a, s b, ...] -> s x', function () {
+      const a = Signal.of()
+      const b = Signal.of()
+      const c = lift((a, b) => a + b, a, b)
+      a(1); b(2); assert.strictEqual(c(), 3)
+      a(3); assert.strictEqual(c(), 5)
+      b(1); assert.strictEqual(c(), 4)
     })
   })
 })
