@@ -1,6 +1,9 @@
 import assert from 'assert'
 import * as R from 'ramda'
-import { Signal, link, startWith, isDefined, isSignal } from '../lib/signal'
+import {
+  Signal, link, isDefined, isSignal,
+  startWith, scan, tap, loop
+} from '../lib/signal'
 import { describe, it } from 'mocha'
 
 const hasValue = (x, v) =>
@@ -326,7 +329,7 @@ describe('Interface Specification', function () {
   })
 
   describe('miscellaneous', function () {
-    it('startWith :: a -> Signal a -> Signal a [ae26]', function () {
+    it('startWith :: Signal s => a -> s a -> s a [ae26]', function () {
       // Initial value if signal is undefined.
       const a = Signal.of()
       const b = startWith(0, a)
@@ -334,7 +337,7 @@ describe('Interface Specification', function () {
       a(1); assert.strictEqual(b(), 1)
     })
 
-    it('startWith :: a -> Signal a -> Signal a [46de]', function () {
+    it('startWith :: Signal s => (() -> a) -> s a -> s a [46de]', function () {
       // Initial value (from function) if signal is undefined.
       const a = Signal.of()
       const b = startWith(() => 0, a)
@@ -342,7 +345,7 @@ describe('Interface Specification', function () {
       a(1); assert.strictEqual(b(), 1)
     })
 
-    it('startWith :: a -> Signal a -> Signal a [46de]', function () {
+    it('startWith :: Signal s => a -> s a -> s a [46de]', function () {
       // Initial value for linked signal.
       const a = Signal.of()
       const b = link(a => a + 1, [a])
@@ -351,12 +354,39 @@ describe('Interface Specification', function () {
       a(1); assert.strictEqual(c(), 2)
     })
 
-    it('startWith :: a -> Signal a -> Signal a [b308]', function () {
+    it('startWith :: Signal s => a -> s a -> s a [b308]', function () {
       // Initial value is ignored if signal is defined.
       const a = Signal.of(1)
       const b = startWith(0, a)
       assert.strictEqual(b(), 1)
       a(2); assert.strictEqual(b(), 2)
+    })
+
+    it('scan :: Signal s => (b -> a -> b) -> b -> s a -> s b', function () {
+      const a = Signal.of()
+      const b = scan((acc, a) => acc + a, 0, a)
+      R.range(0, 10).forEach(a)
+      assert.strictEqual(b(), 45)
+    })
+
+    it('tap :: Signal s => (a -> any) -> s a -> s a', function () {
+      let actual = 0
+      const a = Signal.of()
+      const b = tap(a => (actual += a), a)
+      R.range(0, 10).forEach(a)
+      assert.strictEqual(actual, 45)
+      assert.strictEqual(b(), 9)
+    })
+
+    it('loop :: Signal s => (b -> a -> [b, c]) -> b -> s a -> s c', function () {
+      const average = xs => xs.reduce((a, b) => a + b) / xs.length
+      const a = Signal.of()
+      const b = loop((xs, x) => {
+        xs.push(x); xs = xs.slice(-10)
+        return [xs, average(xs)]
+      }, [], a)
+      R.range(0, 20).forEach(a)
+      assert.strictEqual(b(), 14.5) // sum(10..19) / 10
     })
   })
 })
