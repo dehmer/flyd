@@ -208,7 +208,7 @@ describe('Interface Specification', function () {
     })
   })
 
-  describe('nested signal', function () {
+  describe.only('nested signal', function () {
     it('evaluation order', function () {
       const actual = []
       const push = label => x => actual.push(`${label}:${x}`)
@@ -241,6 +241,27 @@ describe('Interface Specification', function () {
       const input = Signal.of(1)
       const output = link(x => link(a => a + 1, Signal.of(x))(), input)
       assert.strictEqual(output(), 2)
+    })
+
+    it.only('nested read', function () {
+      const actual = []
+      const flag = Signal.of(false)
+      const a = Signal.of()
+      const b = Signal.of()
+      // FIXME: `flag()` should be true not false
+      link(a => actual.push(`[2]:${a}:${flag()}`), [a])
+      link(b => {
+        actual.push(`[1]:${b}`)
+        flag(true)
+        a(2)
+        actual.push('[3]') // FIXME: should happen after [2]
+        flag(false) // FIXME: updates before `a` was evaluated
+      }, [b])
+
+      b(1)
+      console.log('actual', actual) // ['[1]:1', '[3]', '[2]:2:false']
+      const expected = ['[1]:1', '[2]:2:true', '[3]']
+      assert.deepStrictEqual(actual, expected)
     })
   })
 
@@ -411,7 +432,7 @@ describe('Interface Specification', function () {
       b(1); assert.strictEqual(c(), 4)
     })
 
-    it.only('fromListeners :: [String] -> Element -> Signal Event', async function () {
+    it('fromListeners :: [String] -> Element -> Signal Event', async function () {
       const acc = []
 
       const emitter = id => {
