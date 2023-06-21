@@ -5,7 +5,7 @@ import Signal from '../lib/signal'
 
 const {
   isDefined, isSignal,
-  link, startWith, scan, tap, loop, lift
+  link, chain, startWith, scan, tap, loop, lift, fromListeners
 } = Signal
 
 const hasValue = (x, v) =>
@@ -409,6 +409,65 @@ describe('Interface Specification', function () {
       a(1); b(2); assert.strictEqual(c(), 3)
       a(3); assert.strictEqual(c(), 5)
       b(1); assert.strictEqual(c(), 4)
+    })
+
+    it.only('fromListeners :: [String] -> Element -> Signal Event', async function () {
+      const acc = []
+
+      const emitter = id => {
+        let listener_
+        const addEventListener = (type, listener) => {
+          acc.push(`add:${id}`)
+          listener_ = listener
+        }
+        const removeEventListener = (type, listener) => {
+          acc.push(`remove:${id}`)
+          listener_ = null
+        }
+        const emit = n => listener_ && listener_(`${id}:${n}`)
+        return {
+          addEventListener,
+          removeEventListener,
+          emit
+        }
+      }
+
+      const emitters = R.range(0, 3).reduce((acc, i) => {
+        acc[i] = emitter(i)
+        return acc
+      }, {})
+
+      const input = Signal.of()
+      const output = chain(x => {
+        return emitters[x] && fromListeners(['event'], emitters[x])
+      }, input)
+
+      const actual = await new Promise(resolve => {
+        const ticks = [
+          () => input(0), () => emitters[0].emit(0), () => emitters[0].emit(1), () => emitters[0].emit(2),
+          () => input(1), () => emitters[1].emit(0), () => emitters[1].emit(1), () => emitters[1].emit(2),
+          () => input(2), () => emitters[2].emit(0), () => emitters[2].emit(1), () => emitters[2].emit(2),
+          () => input(null)
+        ]
+
+        const timer = setInterval(() => {
+          if (ticks.length) ticks.shift()()
+          else {
+            clearInterval(timer)
+            resolve(acc)
+          }
+        }, 0)
+
+        link(x => acc.push(x), output)
+      })
+
+      const expected = [
+        'add:0', '0:0', '0:1', '0:2', 'remove:0',
+        'add:1', '1:0', '1:1', '1:2', 'remove:1',
+        'add:2', '2:0', '2:1', '2:2', 'remove:2'
+      ]
+
+      assert.deepStrictEqual(actual, expected)
     })
   })
 })
