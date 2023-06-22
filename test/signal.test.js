@@ -262,6 +262,23 @@ describe('Interface Specification', function () {
       const expected = ['[1]:1', '[2]:2:true', '[3]']
       assert.deepStrictEqual(actual, expected)
     })
+
+    it('unnamed [40c9]', function () {
+      const a = Signal.of()
+      const b = link(a => a + 1, a)
+      const c = link((a, b) => a * b, [a, b])
+      a(2); assert.strictEqual(c(), 6)
+    })
+
+    it.only('nested write', function () {
+      const a = Signal.of(1) // immediately overwritten by 2
+      const b = Signal.of()
+      link(a, b) // [L1] aka link(b => a(b), b)
+      const c = link((a, b) => a + b, [a, b]) // [L2]
+      // L1 is executed before L2; thus L2 is only evaluated
+      // once with a=2, b=2.
+      b(2); assert.strictEqual(c(), 4)
+    })
   })
 
   describe('Fantasy Land', function () {
